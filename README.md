@@ -149,9 +149,9 @@ Before training, the dataset must be indexed so that the training pipeline knows
 This repository uses a CSV index file that defines the dataset splits and file locations.
 
 To generate the index file automatically, run:
-
+ ```
 python scripts/make_index.py
-
+ ```
 The script scans the dataset directory and creates the following file:
 
 data/processed/localizer_index.csv
@@ -184,9 +184,9 @@ This file is used by the dataset loader to build training and validation dataset
 After creating the dataset index, the model can be trained using the training script.
 
 Run the following command:
-
+ ```
 python scripts/train.py --index-csv data/processed/localizer_index.csv --outdir outputs/run01 --epochs 50 --lr 1e-4
-
+ ```
 This script performs the full training pipeline including:
 
 • loading the dataset 
@@ -229,9 +229,9 @@ where λ controls the weight of the size regression loss.
 After training, the model can be evaluated on the validation or test dataset using the evaluation script.
 
 Run evaluation with a trained checkpoint:
-
+ ```
 python scripts/eval.py --index-csv data/processed/localizer_index.csv --checkpoint outputs/run01/best.pt
-
+ ```
 The evaluation pipeline loads the trained model and computes localization performance on the dataset.
 
 During evaluation, the model predicts:
@@ -272,9 +272,9 @@ Once the model has been trained, it can be used to localize the target region in
 Inference consists of running a forward pass through the trained network and decoding the predicted heatmap to obtain the target location.
 
 Run inference using a trained checkpoint:
-
+ ```
 python scripts/eval.py --index-csv data/processed/localizer_index.csv --checkpoint outputs/run01/best.pt
-
+ ```
 The inference pipeline performs the same preprocessing steps used during training.
 
 Image Loading 
