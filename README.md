@@ -63,56 +63,24 @@ The implementation is modular and designed to be easily extended for different a
   Tests are included for dataset integrity, coordinate transformations, and model forward passes.
 
 ## Repository Structure
-
+ ```
 localization-model/
-
-├── src/localization/ 
-Core source code for the localization framework.
-
-├── src/localization/data/ 
-Dataset utilities including indexing, preprocessing, and dataset loading.
-
-├── src/localization/transforms/ 
-Image resampling and spatial transformation utilities.
-
-├── src/localization/geometry/ 
-Coordinate conversion functions between voxel and world space.
-
-├── src/localization/targets/ 
-Target generation utilities such as Gaussian heatmap creation.
-
-├── src/localization/models/ 
-Neural network architectures including the 3D U-Net localization model.
-
-├── src/localization/train/ 
-Training utilities including loss functions and the training loop.
-
-├── src/localization/eval/ 
-Evaluation metrics for localization performance.
-
-├── src/localization/inference/ 
-Utilities for decoding model predictions and constructing bounding boxes.
-
-├── src/localization/viz/ 
-Visualization tools for displaying predictions on medical images.
-
-├── scripts/ 
-Command-line scripts for dataset preparation, training, evaluation, and visualization.
-
-├── data/ 
-Dataset directory containing raw data, processed data, and example samples.
-
-├── outputs/ 
-Training outputs including model checkpoints, logs, and experiment results.
-
-├── tests/ 
-Unit tests for dataset validation, coordinate transformations, and model behavior.
-
-├── docs/ 
-Project documentation including dataset format, training guide, and inference instructions.
-
-└── README.md 
-Main documentation for the repository.
+├── src/localization/ Core source code for the localization framework.
+├── src/localization/data/ Dataset utilities including indexing, preprocessing, and dataset loading.
+├── src/localization/transforms/ Image resampling and spatial transformation utilities.
+├── src/localization/geometry/ Coordinate conversion functions between voxel and world space.
+├── src/localization/targets/ Target generation utilities such as Gaussian heatmap creation.
+├── src/localization/models/ Neural network architectures including the 3D U-Net localization model.
+├── src/localization/train/ Training utilities including loss functions and the training loop.
+├── src/localization/eval/ Evaluation metrics for localization performance.
+├── src/localization/inference/ Utilities for decoding model predictions and constructing bounding boxes.
+├── src/localization/viz/ Visualization tools for displaying predictions on medical images.
+├── scripts/ Command-line scripts for dataset preparation, training, evaluation, and visualization.
+├── data/ Dataset directory containing raw data, processed data, and example samples.
+├── outputs/ Training outputs including model checkpoints, logs, and experiment results.
+├── tests/ Unit tests for dataset validation, coordinate transformations, and model behavior.
+├── docs/ Project documentation including dataset format, training guide, and inference instructions.
+└── README.md Main documentation for the repository.
 
 ## Installation
 
@@ -121,19 +89,16 @@ Clone the repository:
 git clone https://github.com/OmerFSahin/localization-model.git
 cd localization-model
 
-Create a Python environment (recommended):
-
-python -m venv venv
-source venv/bin/activate
+Create a Python environment (recommended)
 
 Install the required dependencies:
-
+```
 pip install -r requirements.txt
-
+```
 Alternatively, install the project in editable mode:
-
+```
 pip install -e .
-
+```
 This allows importing the project modules directly in Python:
 
 from localization.models.unet3d import LocalizerNet
