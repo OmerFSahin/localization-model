@@ -27,7 +27,6 @@ import pandas as pd
 import torch
 import SimpleITK as sitk
 
-from localization.data.dataset import SampleConfig
 from localization.data.preprocess import normalize_ct
 from localization.transforms.resample import sitk_resample_iso
 from localization.geometry.coords import world_to_vox
@@ -130,10 +129,12 @@ def main():
 
     # Choose slice center using predicted center converted to ORIGINAL voxel coords
     pred_center_vox0 = world_to_vox(pred_center_mm[None, :], img0)[0]  # (x,y,z)
-
+    raw_size_mm = size_np
+    clamped_size_mm = np.maximum(size_np, args.min_size_mm)
     print(f"Case: {case_id}")
     print("Pred center mm:", pred_center_mm.tolist())
-    print("Pred size mm:", np.maximum(size_np, args.min_size_mm).tolist())
+    print("Raw pred size mm:", raw_size_mm.tolist())
+    print("Clamped pred size mm:", clamped_size_mm.tolist())
     print("Pred bbox mm:", pred_bbox_mm.tolist())
     print("GT bbox mm:", gt_bbox_mm.tolist())
 
