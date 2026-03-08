@@ -118,7 +118,7 @@ Main documentation for the repository.
 
 Clone the repository:
 
-git clone https://github.com/yourusername/localization-model.git
+git clone https://github.com/OmerFSahin/localization-model.git
 cd localization-model
 
 Create a Python environment (recommended):
