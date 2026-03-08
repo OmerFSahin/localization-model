@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "localization-model"
+version = "0.1.0"
+description = "3D medical image localization with PyTorch and SimpleITK"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "torch",
+    "numpy",
+    "pandas",
+    "SimpleITK",
+    "matplotlib",
+    "pytest",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
