@@ -22,7 +22,7 @@ FEATURES
 • modular PyTorch training pipeline 
 
 REPOSITORY STRUCTURE
-
+```
 localization-model/
 ├─ README.md
 ├─ LICENSE
@@ -60,22 +60,25 @@ localization-model/
    ├─ dataset_format.md
    ├─ training.md
    └─ inference.md
-
+```
 INSTALLATION
 
 Clone the repository:
-
-git clone https://github.com/yourusername/localization-model.git
+```
+git clone https://github.com/OmerFSahin/localization-model.git
+```
+```
 cd localization-model
+```
 
 Install dependencies:
-
+```
 pip install -r requirements.txt
-
+```
 or with editable install:
-
+```
 pip install -e .
-
+```
 DATASET
 
 Each case contains:
