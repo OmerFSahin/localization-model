@@ -29,7 +29,7 @@ from localization.models.unet3d import LocalizerNet
 from localization.train.losses import LossConfig
 from localization.eval.metrics import ValConfig
 from localization.train.trainer import train, TrainConfig
-
+from localization.models.factory import build_model
 
 def parse_args():
     ap = argparse.ArgumentParser(description="Train 3D localizer (heatmap + size).")
@@ -39,7 +39,14 @@ def parse_args():
     ap.add_argument("--outdir", type=Path, default=Path("outputs/run01"))
 
     # Model
-    ap.add_argument("--base", type=int, default=16, help="Base channel count for U-Net.")
+    ap.add_argument(
+    "--model",
+    type=str,
+    default="unet3d",
+    choices=["unet3d", "cnn3d_regressor", "resnet3d_regressor"],
+    help="Model architecture to train.",
+)
+    ap.add_argument("--base", type=int, default=16, help="Base channel count for the model.")
     ap.add_argument("--dropout", type=float, default=0.0)
     ap.add_argument("--positive-size", action="store_true", help="Use softplus to enforce size > 0.")
 
@@ -111,10 +118,15 @@ def main():
     )
 
     print(f"Train samples: {len(train_ds)} | Val samples: {len(val_ds)}")
+    print(f"Model: {args.model} | base={args.base} | dropout={args.dropout} | positive_size={args.positive_size}")
 
     # ---- model ----
-    net = LocalizerNet(base=int(args.base), dropout=float(args.dropout), positive_size=bool(args.positive_size))
-
+    net = build_model(
+        name=args.model,
+        base=int(args.base),
+        dropout=float(args.dropout),
+        positive_size=bool(args.positive_size),
+    )
     # ---- training config ----
     loss_cfg = LossConfig(heat_loss="mse", size_weight=float(args.size_loss_w))
     val_cfg = ValConfig(clamp_min_size_mm=float(args.min_size_mm), success_thresh_mm=float(args.p_thresh_mm))

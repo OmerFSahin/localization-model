@@ -70,6 +70,46 @@ def _save_json(path: Path, obj: Any) -> None:
     with open(path, "w") as f:
         json.dump(obj, f, indent=2)
 
+def validate_losses(
+    net: torch.nn.Module,
+    val_dl,
+    loss_cfg: LossConfig,
+    device: str = "cpu",
+) -> Dict[str, float]:
+    """
+    Compute validation losses over the validation DataLoader.
+    """
+    net.eval()
+
+    batch_total = []
+    batch_heat = []
+    batch_size = []
+
+    with torch.no_grad():
+        for x, y in val_dl:
+            x = x.to(device)
+            heat_t = y["heat"].to(device)
+            size_t = y["size"].to(device)
+
+            heat_p, size_p = net(x)
+
+            losses = localizer_loss(
+                heat_pred=heat_p,
+                heat_tgt=heat_t,
+                size_pred=size_p,
+                size_tgt=size_t,
+                cfg=loss_cfg,
+            )
+
+            batch_total.append(float(losses["total"].detach().cpu()))
+            batch_heat.append(float(losses["heat"].detach().cpu()))
+            batch_size.append(float(losses["size"].detach().cpu()))
+
+    return {
+        "val_total_loss": float(np.mean(batch_total)) if batch_total else float("nan"),
+        "val_heat_loss": float(np.mean(batch_heat)) if batch_heat else float("nan"),
+        "val_size_loss": float(np.mean(batch_size)) if batch_size else float("nan"),
+    }
 
 # -------------------------------------------------------
 # Main trainer
@@ -166,7 +206,10 @@ def train(
         train_heat = float(np.mean(batch_heat)) if batch_heat else float("nan")
         train_size = float(np.mean(batch_size)) if batch_size else float("nan")
 
-        # Validation
+        # Validation losses
+        val_losses = validate_losses(net, val_dl, loss_cfg=cfg.loss_cfg, device=device)
+
+        # Validation metrics
         val_metrics = validate_epoch(net, val_dl, device=device, cfg=cfg.val_cfg)
 
         # Determine if best
@@ -190,18 +233,25 @@ def train(
             "train_total_loss": train_total,
             "train_heat_loss": train_heat,
             "train_size_loss": train_size,
+            **val_losses,
             **val_metrics,
         }
         history["epochs"].append(rec)
 
         # Print
         if (epoch % cfg.log_every) == 0:
+            val_total = val_losses.get("val_total_loss", float("nan"))
+            val_heat = val_losses.get("val_heat_loss", float("nan"))
+            val_size = val_losses.get("val_size_loss", float("nan"))
+
             med = val_metrics.get("median_center_error_mm", float("nan"))
             p20 = val_metrics.get("p_at_thresh", float("nan")) * 100.0
             miou = val_metrics.get("mean_iou", float("nan"))
+
             print(
                 f"Ep {epoch:03d} | "
-                f"loss {train_total:.4f} (heat {train_heat:.4f}, size {train_size:.4f}) | "
+                f"train {train_total:.4f} (heat {train_heat:.4f}, size {train_size:.4f}) | "
+                f"val {val_total:.4f} (heat {val_heat:.4f}, size {val_size:.4f}) | "
                 f"medCE {med:.2f} mm | P@{cfg.val_cfg.success_thresh_mm:.0f} {p20:.1f}% | mIoU {miou:.3f}"
             )
 

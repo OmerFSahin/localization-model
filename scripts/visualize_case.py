@@ -131,12 +131,38 @@ def main():
     pred_center_vox0 = world_to_vox(pred_center_mm[None, :], img0)[0]  # (x,y,z)
     raw_size_mm = size_np
     clamped_size_mm = np.maximum(size_np, args.min_size_mm)
+    peak_zyx = np.unravel_index(np.argmax(heat_np), heat_np.shape)
+
+    gt_center_mm = np.array([
+        (gt_bbox_mm[0] + gt_bbox_mm[3]) / 2,
+        (gt_bbox_mm[1] + gt_bbox_mm[4]) / 2,
+        (gt_bbox_mm[2] + gt_bbox_mm[5]) / 2,
+        ], dtype=np.float32)
+    gt_center_voxR = world_to_vox(gt_center_mm[None, :], imgR)[0]
+    pred_peak_zyx = np.unravel_index(np.argmax(heat_np), heat_np.shape)
+    pred_peak_xyz = np.array([pred_peak_zyx[2], pred_peak_zyx[1], pred_peak_zyx[0]], dtype=np.float32)
+
     print(f"Case: {case_id}")
     print("Pred center mm:", pred_center_mm.tolist())
     print("Raw pred size mm:", raw_size_mm.tolist())
     print("Clamped pred size mm:", clamped_size_mm.tolist())
     print("Pred bbox mm:", pred_bbox_mm.tolist())
     print("GT bbox mm:", gt_bbox_mm.tolist())
+    print("Pred heat peak zyx:", peak_zyx)
+    print("Heat shape zyx:", heat_np.shape)
+    print("Resampled image size xyz:", imgR.GetSize())
+    print("GT center mm:", gt_center_mm.tolist())
+    print("GT center vox xyz on resampled image:", gt_center_voxR.tolist())
+    print("Pred peak zyx:", pred_peak_zyx)
+    print("Pred peak xyz:", pred_peak_xyz.tolist())
+    print("img0 size xyz:", img0.GetSize())
+    print("img0 spacing xyz:", img0.GetSpacing())
+    print("img0 origin xyz:", img0.GetOrigin())
+    print("img0 direction:", img0.GetDirection()) 
+    print("imgR size xyz:", imgR.GetSize())
+    print("imgR spacing xyz:", imgR.GetSpacing())
+    print("imgR origin xyz:", imgR.GetOrigin())
+    print("imgR direction:", imgR.GetDirection())
 
     # ---- Plot three views ----
     plot_three_views(

@@ -52,13 +52,12 @@ def compute_out_size_xyz(img: sitk.Image, out_spacing_xyz: Spacing3) -> Tuple[in
     out_sp = np.array(out_spacing_xyz, dtype=np.float64)     # (x,y,z)
 
     # floor keeps size conservative; you can also use round/ceil depending on preference.
-    out_size = np.floor(in_size * (in_sp / out_sp)).astype(np.int64)
+    out_size = np.round(((in_size - 1) * in_sp) / out_sp).astype(np.int64) + 1
 
     # Safety: avoid zeros (can happen for tiny dimensions)
     out_size = np.maximum(out_size, 1)
 
-    return (int(out_size[0]), int(out_size[1]), int(out_size[2]))
-
+    return tuple(int(v) for v in out_size)
 
 def resample_to_spacing(
     img: sitk.Image,

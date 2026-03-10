@@ -30,7 +30,7 @@ PadSpec = Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]]  # ((z0,z1),(
 # -------------------------------------------------------
 def normalize_ct(
     arr_zyx: Array,
-    clip: Tuple[float, float] = (-150.0, 350.0),
+    clip: Tuple[float, float] = (-100.0, 500.0),
     eps: float = 1e-6,
 ) -> Array:
     """
