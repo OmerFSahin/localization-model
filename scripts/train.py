@@ -4,10 +4,24 @@ scripts/train.py
 
 Train the localization model.
 
+Supported models:
+- unet3d (default)
+    Main U-Net style model with skip connections.
+    Best choice when fine spatial localization is important.
+
+- cnn3d_regressor
+    Lightweight plain 3D CNN baseline.
+    Useful as a simple baseline and for debugging / quick experiments.
+
+- resnet3d_regressor
+    Residual 3D CNN baseline.
+    A stronger encoder-style alternative without a U-Net decoder.
+
 Example:
     python scripts/train.py \
         --index-csv data/processed/localizer_index.csv \
         --outdir outputs/run01 \
+        --model unet3d \
         --epochs 50 \
         --lr 1e-4 \
         --weight-decay 1e-4 \
