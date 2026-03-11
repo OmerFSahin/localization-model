@@ -19,7 +19,7 @@ import torch
 
 from localization.data.dataset import SampleConfig, LocalizerDataset
 from localization.data.dataloaders import LoaderConfig
-from localization.models.unet3d import LocalizerNet
+from localization.models.factory import build_model
 from localization.eval.metrics import validate_epoch, ValConfig
 
 
@@ -32,6 +32,7 @@ def parse_args():
     ap.add_argument("--out-json", type=Path, default=None, help="Optional path to save metrics as JSON.")
 
     # Model
+    ap.add_argument("--model", type=str, default="unet3d", choices=["unet3d", "cnn3d_regressor", "resnet3d_regressor"], help="Model architecture used by the checkpoint.",)
     ap.add_argument("--base", type=int, default=16)
     ap.add_argument("--dropout", type=float, default=0.0)
     ap.add_argument("--positive-size", action="store_true")
@@ -98,10 +99,12 @@ def main():
     print(f"Evaluating split='{args.split}' with {len(ds)} samples on device='{device}'")
 
     # --- Model ---
-    net = LocalizerNet(base=int(args.base), dropout=float(args.dropout), positive_size=bool(args.positive_size)).to(device)
-    sd = torch.load(args.ckpt, map_location=device)
-    net.load_state_dict(sd)
-    net.eval()
+    net = build_model(
+        name=args.model,
+        base=int(args.base),
+        dropout=float(args.dropout),
+        positive_size=bool(args.positive_size),
+    )
 
     # --- Metrics config ---
     val_cfg = ValConfig(
