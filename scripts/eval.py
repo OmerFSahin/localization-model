@@ -2,7 +2,38 @@
 """
 scripts/eval.py
 
-Evaluate a trained localizer checkpoint on val or test split.
+Evaluate a trained 3D localization model.
+
+Supported models:
+- unet3d
+- cnn3d_regressor
+- resnet3d_regressor
+
+Examples:
+
+1) Evaluate U-Net
+    python scripts/eval.py \
+        --index-csv data/processed/localizer_index.csv \
+        --ckpt outputs/unet_run/best.pt \
+        --model unet3d \
+        --base 16 \
+        --device cuda
+
+2) Evaluate CNN baseline
+    python scripts/eval.py \
+        --index-csv data/processed/localizer_index.csv \
+        --ckpt outputs/cnn_run/best.pt \
+        --model cnn3d_regressor \
+        --base 16 \
+        --device cuda
+
+3) Evaluate ResNet baseline
+    python scripts/eval.py \
+        --index-csv data/processed/localizer_index.csv \
+        --ckpt outputs/resnet_run/best.pt \
+        --model resnet3d_regressor \
+        --base 16 \
+        --device cuda
 
 Examples:
     python scripts/eval.py --index-csv data/processed/localizer_index.csv --ckpt outputs/run01/best.pt --split val
