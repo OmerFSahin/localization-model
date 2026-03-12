@@ -53,6 +53,57 @@ def center_mm_from_heatmap(
     center_mm = origin_xyz.astype(np.float32) + (A @ v_xyz.T).T[0]
     return center_mm.astype(np.float32)
 
+def extract_pad_spec(batch_pad_spec, batch_index: int = 0):
+    """
+    Recover one sample's pad_spec from DataLoader-collated metadata.
+
+    Expected original single-sample format:
+        ((z0, z1), (y0, y1), (x0, x1))
+
+    After default collate with batch size B, this often becomes:
+        [
+            [z0_batch, z1_batch],
+            [y0_batch, y1_batch],
+            [x0_batch, x1_batch],
+        ]
+    where each element may be a tensor/list.
+
+    Returns:
+        ((z0, z1), (y0, y1), (x0, x1)) as plain ints
+    """
+    def _to_int(v):
+        if hasattr(v, "item"):
+            return int(v.item())
+        return int(v)
+
+    # Case 1: already a single-sample pad_spec
+    if len(batch_pad_spec) == 3 and len(batch_pad_spec[0]) == 2:
+        a0 = batch_pad_spec[0][0]
+        # If these are scalars, not batched tensors/lists
+        if not hasattr(a0, "__len__") or isinstance(a0, (int, float)):
+            return tuple(tuple(_to_int(v) for v in pair) for pair in batch_pad_spec)
+
+    # Case 2: collated by DataLoader across batch
+    return (
+        (_to_int(batch_pad_spec[0][0][batch_index]), _to_int(batch_pad_spec[0][1][batch_index])),
+        (_to_int(batch_pad_spec[1][0][batch_index]), _to_int(batch_pad_spec[1][1][batch_index])),
+        (_to_int(batch_pad_spec[2][0][batch_index]), _to_int(batch_pad_spec[2][1][batch_index])),
+    )
+
+def unpad_zyx(arr: np.ndarray, pad_spec) -> np.ndarray:
+    """
+    Remove padding from a (Z,Y,X) array.
+
+    Expected pad_spec format:
+        ((z0, z1), (y0, y1), (x0, x1))
+    """
+    (z0, z1), (y0, y1), (x0, x1) = pad_spec
+
+    z_slice = slice(z0, arr.shape[0] - z1 if z1 > 0 else None)
+    y_slice = slice(y0, arr.shape[1] - y1 if y1 > 0 else None)
+    x_slice = slice(x0, arr.shape[2] - x1 if x1 > 0 else None)
+
+    return arr[z_slice, y_slice, x_slice]
 
 def bbox_from_center_size(center_mm: np.ndarray, size_mm: np.ndarray) -> np.ndarray:
     """
@@ -130,7 +181,10 @@ def validate_epoch(
             heat_p, size_p = net(x)
 
             # heat_p: (B,1,Z,Y,X) -> take first in batch
-            hz = heat_p[0, 0].detach().cpu().numpy()
+            hz_pad = heat_p[0, 0].detach().cpu().numpy()
+
+            pad_spec = extract_pad_spec(y["pad_spec"], batch_index=0)
+            hz = unpad_zyx(hz_pad, pad_spec)
 
             spacing = y["spacing"][0].numpy()
             origin = y["origin"][0].numpy()
