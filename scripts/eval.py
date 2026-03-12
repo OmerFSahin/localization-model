@@ -34,10 +34,6 @@ Examples:
         --model resnet3d_regressor \
         --base 16 \
         --device cuda
-
-Examples:
-    python scripts/eval.py --index-csv data/processed/localizer_index.csv --ckpt outputs/run01/best.pt --split val
-    python scripts/eval.py --index-csv data/processed/localizer_index.csv --ckpt outputs/run01/best.pt --split test
 """
 
 from __future__ import annotations
@@ -95,7 +91,7 @@ def main():
 
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-    # --- Dataset config (should match training) ---
+    # --- Dataset config ---
     sample_cfg = SampleConfig(
         target_spacing_xyz=(args.target_spacing[0], args.target_spacing[1], args.target_spacing[2]),
         heat_sigma_vox=float(args.heat_sigma),
@@ -116,18 +112,27 @@ def main():
     )
 
     # Build DataLoader (shuffle False for evaluation)
-    dl = torch.utils.data.DataLoader(
-        ds,
+    dl_kwargs = dict(
+        dataset=ds,
         batch_size=loader_cfg.batch_size,
         shuffle=False,
         num_workers=loader_cfg.num_workers,
         pin_memory=loader_cfg.pin_memory,
         drop_last=loader_cfg.drop_last,
-        persistent_workers=loader_cfg.persistent_workers if loader_cfg.num_workers > 0 else False,
-        prefetch_factor=loader_cfg.prefetch_factor if loader_cfg.num_workers > 0 and loader_cfg.prefetch_factor is not None else 2,
     )
 
+    if loader_cfg.num_workers > 0:
+        dl_kwargs["persistent_workers"] = loader_cfg.persistent_workers
+        if loader_cfg.prefetch_factor is not None:
+            dl_kwargs["prefetch_factor"] = loader_cfg.prefetch_factor
+
+    dl = torch.utils.data.DataLoader(**dl_kwargs)
+
     print(f"Evaluating split='{args.split}' with {len(ds)} samples on device='{device}'")
+    print(
+            f"Model: {args.model} | base={args.base} | "
+            f"dropout={args.dropout} | positive_size={args.positive_size}"
+        )
 
     # --- Model ---
     net = build_model(
@@ -136,6 +141,12 @@ def main():
         dropout=float(args.dropout),
         positive_size=bool(args.positive_size),
     )
+
+    # --- Load checkpoint ---
+    sd = torch.load(args.ckpt, map_location=device)
+    net.load_state_dict(sd)
+    net.to(device)
+    net.eval()
 
     # --- Metrics config ---
     val_cfg = ValConfig(
@@ -165,6 +176,10 @@ def main():
             "split": args.split,
             "ckpt": str(args.ckpt),
             "device": device,
+            "model": args.model,
+            "base": int(args.base),
+            "dropout": float(args.dropout),
+            "positive_size": bool(args.positive_size),
             "metrics": metrics,
         }
         with open(args.out_json, "w") as f:
