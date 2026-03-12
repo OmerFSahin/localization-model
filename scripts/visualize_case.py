@@ -36,6 +36,10 @@ import pandas as pd
 import torch
 import SimpleITK as sitk
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
 from localization.data.preprocess import (
     normalize_ct,
     pad_spec_for_shape,
@@ -90,6 +94,9 @@ def parse_args():
 
     # Device
     ap.add_argument("--device", type=str, default=None)
+
+    # Optional output
+    ap.add_argument("--save-path", type=Path, default=None, help="Optional path to save the visualization as PNG.",)
 
     return ap.parse_args()
 
@@ -215,6 +222,12 @@ def main():
         center_xyz=pred_center_vox0,
         title_prefix=case_id,
     )
+    if args.save_path is not None:
+        args.save_path.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(args.save_path, dpi=600, bbox_inches="tight")
+        print(f"Saved figure to: {args.save_path}")
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":
