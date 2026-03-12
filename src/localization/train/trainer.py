@@ -198,6 +198,7 @@ def train(
             losses["total"].backward()
             optimizer.step()
 
+
             batch_losses.append(float(losses["total"].detach().cpu()))
             batch_heat.append(float(losses["heat"].detach().cpu()))
             batch_size.append(float(losses["size"].detach().cpu()))
