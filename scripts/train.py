@@ -39,7 +39,6 @@ import torch
 
 from localization.data.dataset import SampleConfig
 from localization.data.dataloaders import build_loaders, LoaderConfig
-from localization.models.unet3d import LocalizerNet
 from localization.train.losses import LossConfig
 from localization.eval.metrics import ValConfig
 from localization.train.trainer import train, TrainConfig
@@ -131,6 +130,11 @@ def main():
         val_loader_cfg=val_loader_cfg,
     )
 
+    print("Requested device:", args.device)
+    print("torch.cuda.is_available():", torch.cuda.is_available())
+    if torch.cuda.is_available():
+        print("CUDA device count:", torch.cuda.device_count())
+        print("CUDA device 0:", torch.cuda.get_device_name(0))
     print(f"Train samples: {len(train_ds)} | Val samples: {len(val_ds)}")
     print(f"Model: {args.model} | base={args.base} | dropout={args.dropout} | positive_size={args.positive_size}")
 
