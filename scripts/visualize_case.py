@@ -8,11 +8,20 @@ Examples:
     python scripts/visualize_case.py \
         --index-csv data/processed/localizer_index.csv \
         --ckpt outputs/run01/best.pt \
+        --model unet3d \
         --split val --idx 0 \
-        --margin-mm 25
+        --margin-mm 25 \
+        --device cuda
+
+Supported models:
+- unet3d
+- cnn3d_regressor
+- resnet3d_regressor
 
 Notes:
 - The model runs on the RESAMPLED image grid (target spacing).
+- Training uses padded inputs, so this script pads the resampled volume
+  before inference and removes padding before geometric decode.
 - Boxes are drawn on the ORIGINAL image grid (full FOV).
 """
 
@@ -27,12 +36,33 @@ import pandas as pd
 import torch
 import SimpleITK as sitk
 
-from localization.data.preprocess import normalize_ct
+from localization.data.preprocess import (
+    normalize_ct,
+    pad_spec_for_shape,
+    apply_pad,
+)
 from localization.transforms.resample import sitk_resample_iso
 from localization.geometry.coords import world_to_vox
 from localization.inference.decode import DecodeConfig, decode_prediction, corners_from_bbox_mm
-from localization.models.unet3d import LocalizerNet
+from localization.models.factory import build_model
 from localization.viz.viewer import minmax_xyz_from_corners, plot_three_views, clamp_minmax_to_volume
+
+def unpad_zyx(arr: np.ndarray, pad_spec) -> np.ndarray:
+    """
+    Remove padding from a (Z,Y,X) array using pad_spec from pad_spec_for_shape.
+
+    Expected pad_spec format:
+        ((z0, z1), (y0, y1), (x0, x1))
+    """
+    (z0, z1), (y0, y1), (x0, x1) = pad_spec
+
+    z_slice = slice(z0, arr.shape[0] - z1 if z1 > 0 else None)
+    y_slice = slice(y0, arr.shape[1] - y1 if y1 > 0 else None)
+    x_slice = slice(x0, arr.shape[2] - x1 if x1 > 0 else None)
+
+    return arr[z_slice, y_slice, x_slice]
+
+
 
 
 def parse_args():
@@ -44,6 +74,7 @@ def parse_args():
     ap.add_argument("--idx", type=int, default=0)
 
     # Model
+    ap.add_argument("--model", type=str, default="unet3d", choices=["unet3d", "cnn3d_regressor", "resnet3d_regressor"], help="Model architecture used by the checkpoint.",)
     ap.add_argument("--base", type=int, default=16)
     ap.add_argument("--dropout", type=float, default=0.0)
     ap.add_argument("--positive-size", action="store_true")
@@ -51,6 +82,7 @@ def parse_args():
     # Preprocess / resample (must match training)
     ap.add_argument("--target-spacing", type=float, nargs=3, default=[2.0, 2.0, 2.0])
     ap.add_argument("--ct-clip", type=float, nargs=2, default=[-150.0, 350.0])
+    ap.add_argument("--pad-multiple", type=int, default=8, help="Must match training pad_multiple.")
 
     # Decode options
     ap.add_argument("--min-size-mm", type=float, default=10.0, help="Clamp predicted size for visualization.")
@@ -92,18 +124,25 @@ def main():
     # ---- Normalize like training ----
     volR = normalize_ct(volR, clip=(float(args.ct_clip[0]), float(args.ct_clip[1])))
 
+
+    # ---- Pad like training ----
+    pad_spec = pad_spec_for_shape(volR.shape, k=int(args.pad_multiple))
+    volR_pad = apply_pad(volR, pad_spec, mode="constant", value=0.0)
+
     x = torch.from_numpy(volR[None, None]).to(device)  # (1,1,Z,Y,X)
 
     # ---- Load model + checkpoint ----
-    net = LocalizerNet(base=int(args.base), dropout=float(args.dropout), positive_size=bool(args.positive_size)).to(device)
+    net = build_model(name=args.model, base=int(args.base), dropout=float(args.dropout), positive_size=bool(args.positive_size),)
     sd = torch.load(args.ckpt, map_location=device)
     net.load_state_dict(sd)
+    net.to(device)
     net.eval()
 
     with torch.no_grad():
         heat_p, size_p = net(x)
 
-    heat_np = heat_p[0, 0].detach().cpu().numpy()  # (Z,Y,X)
+    heat_np_pad = heat_p[0, 0].detach().cpu().numpy()  # padded (Z,Y,X)
+    heat_np = unpad_zyx(heat_np_pad, pad_spec)  # (Z,Y,X)
     size_np = size_p[0].detach().cpu().numpy()     # (3,)
 
     # ---- Decode prediction on RESAMPLED grid (imgR) -> bbox in mm ----
@@ -129,9 +168,14 @@ def main():
 
     # Choose slice center using predicted center converted to ORIGINAL voxel coords
     pred_center_vox0 = world_to_vox(pred_center_mm[None, :], img0)[0]  # (x,y,z)
+    pred_center_vox0 = np.array(pred_center_vox0, dtype=np.float32)
+    pred_center_vox0[0] = np.clip(pred_center_vox0[0], 0, vol0.shape[2] - 1)  # x
+    pred_center_vox0[1] = np.clip(pred_center_vox0[1], 0, vol0.shape[1] - 1)  # y
+    pred_center_vox0[2] = np.clip(pred_center_vox0[2], 0, vol0.shape[0] - 1)  # z
     raw_size_mm = size_np
     clamped_size_mm = np.maximum(size_np, args.min_size_mm)
     peak_zyx = np.unravel_index(np.argmax(heat_np), heat_np.shape)
+    pred_peak_zyx = peak_zyx
 
     gt_center_mm = np.array([
         (gt_bbox_mm[0] + gt_bbox_mm[3]) / 2,
@@ -139,7 +183,6 @@ def main():
         (gt_bbox_mm[2] + gt_bbox_mm[5]) / 2,
         ], dtype=np.float32)
     gt_center_voxR = world_to_vox(gt_center_mm[None, :], imgR)[0]
-    pred_peak_zyx = np.unravel_index(np.argmax(heat_np), heat_np.shape)
     pred_peak_xyz = np.array([pred_peak_zyx[2], pred_peak_zyx[1], pred_peak_zyx[0]], dtype=np.float32)
 
     print(f"Case: {case_id}")
