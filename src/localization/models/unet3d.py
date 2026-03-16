@@ -83,9 +83,16 @@ class LocalizerNet(nn.Module):
         # Heads
         self.head_heat = nn.Conv3d(base, 1, kernel_size=1)
 
-        self.gap = nn.AdaptiveAvgPool3d(1)   # -> (B, C, 1, 1, 1)
-        self.drop = nn.Dropout(dropout) if dropout and dropout > 0 else nn.Identity()
-        self.head_size = nn.Linear(base, 3)
+        self.gap = nn.AdaptiveAvgPool3d(1)
+
+        self.head_size = nn.Sequential(
+            nn.Linear(base, base * 2),
+            nn.LeakyReLU(0.1, inplace=True),
+            nn.Dropout(dropout) if dropout and dropout > 0 else nn.Identity(),
+            nn.Linear(base * 2, base),
+            nn.LeakyReLU(0.1, inplace=True),
+            nn.Linear(base, 3),
+        )
 
     @staticmethod
     def _match_spatial(u: torch.Tensor, ref: torch.Tensor) -> torch.Tensor:
@@ -142,9 +149,8 @@ class LocalizerNet(nn.Module):
         # Heads
         heat = self.head_heat(d1)  # (B,1,Z,Y,X)
 
-        pooled = self.gap(d1).flatten(1)     # (B, base)
-        pooled = self.drop(pooled)
-        size = self.head_size(pooled)        # (B,3)
+        pooled = self.gap(d1).flatten(1)
+        size = self.head_size(pooled)
 
         if self.positive_size:
             # softplus ensures positive predictions (helps early training stability)

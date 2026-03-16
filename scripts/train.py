@@ -69,6 +69,13 @@ def parse_args():
     ap.add_argument("--ct-clip", type=float, nargs=2, default=[-150.0, 350.0], help="CT clip window (min max).")
     ap.add_argument("--pad-multiple", type=int, default=8, help="Pad (Z,Y,X) to a multiple of this value.")
     ap.add_argument("--heatmap-method", type=str, default="separable", choices=["separable", "meshgrid"])
+    ap.add_argument(
+    "--size-target",
+    type=str,
+    default="mm",
+    choices=["mm", "log_mm"],
+    help="Target representation for bbox size regression.",
+)
 
     # Loader
     ap.add_argument("--batch-size", type=int, default=1)
@@ -102,6 +109,7 @@ def main():
         ct_clip=(float(args.ct_clip[0]), float(args.ct_clip[1])),
         pad_multiple=int(args.pad_multiple),
         heatmap_method=str(args.heatmap_method),
+        size_target=str(args.size_target),
     )
 
     # ---- build loader configs ----
@@ -147,7 +155,7 @@ def main():
     )
     # ---- training config ----
     loss_cfg = LossConfig(heat_loss="mse", size_weight=float(args.size_loss_w))
-    val_cfg = ValConfig(clamp_min_size_mm=float(args.min_size_mm), success_thresh_mm=float(args.p_thresh_mm))
+    val_cfg = ValConfig(clamp_min_size_mm=float(args.min_size_mm), success_thresh_mm=float(args.p_thresh_mm),     size_target=str(args.size_target),)
 
     train_cfg = TrainConfig(
         epochs=int(args.epochs),

@@ -91,6 +91,14 @@ def main():
 
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
+    ap.add_argument(
+        "--size-target",
+        type=str,
+        default="mm",
+        choices=["mm", "log_mm"],
+        help="Target representation for bbox size regression.",
+)
+
     # --- Dataset config ---
     sample_cfg = SampleConfig(
         target_spacing_xyz=(args.target_spacing[0], args.target_spacing[1], args.target_spacing[2]),
@@ -98,6 +106,7 @@ def main():
         ct_clip=(float(args.ct_clip[0]), float(args.ct_clip[1])),
         pad_multiple=int(args.pad_multiple),
         heatmap_method=str(args.heatmap_method),
+        size_target=str(args.size_target),
     )
 
     ds = LocalizerDataset(args.index_csv, split=args.split, cfg=sample_cfg)
@@ -152,6 +161,7 @@ def main():
     val_cfg = ValConfig(
         clamp_min_size_mm=float(args.min_size_mm),
         success_thresh_mm=float(args.p_thresh_mm),
+        size_target=str(args.size_target),
     )
 
     metrics = validate_epoch(net, dl, device=device, cfg=val_cfg)

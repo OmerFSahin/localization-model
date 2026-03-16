@@ -51,6 +51,7 @@ class SampleConfig:
 
     Keep all dataset knobs here so they can be set from configs later.
     """
+    size_target: str = "mm"   # "mm" or "log_mm"
     target_spacing_xyz: Tuple[float, float, float] = (2.0, 2.0, 2.0)
     heat_sigma_vox: float = 3.0
     ct_clip: Tuple[float, float] = (-150.0, 350.0)
@@ -151,6 +152,13 @@ class LocalizerDataset(Dataset):
         center_mm = np.array([(xmin + xmax) / 2, (ymin + ymax) / 2, (zmin + zmax) / 2], dtype=np.float32)
         size_mm = np.array([xmax - xmin, ymax - ymin, zmax - zmin], dtype=np.float32)  # (wx,wy,wz)
 
+        if self.cfg.size_target == "mm":
+            size_target = size_mm
+        elif self.cfg.size_target == "log_mm":
+            size_target = np.log(np.maximum(size_mm, 1e-6)).astype(np.float32)
+        else:
+            raise ValueError(f"Unknown size_target: {self.cfg.size_target}")
+
         # 4) Convert center from world(mm) to voxel(x,y,z) on the resampled grid
         center_vox_xyz = world_to_vox(center_mm[None, :], img)[0]  # float voxel coords (x,y,z)
 
@@ -170,7 +178,7 @@ class LocalizerDataset(Dataset):
         # 7) Convert to tensors (channels first)
         x = torch.from_numpy(arr_zyx[None])         # (1,Z,Y,X)
         y_heat = torch.from_numpy(heat_zyx[None])   # (1,Z,Y,X)
-        y_size = torch.from_numpy(size_mm)          # (3,)
+        y_size = torch.from_numpy(size_target)      # (3,)
 
         # Extra geometry metadata for validation metrics (mm-level errors)
         spacing_xyz = np.array(img.GetSpacing(), dtype=np.float32)              # (x,y,z)

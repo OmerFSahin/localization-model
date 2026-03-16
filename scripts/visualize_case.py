@@ -82,6 +82,8 @@ def parse_args():
     ap.add_argument("--base", type=int, default=16)
     ap.add_argument("--dropout", type=float, default=0.0)
     ap.add_argument("--positive-size", action="store_true")
+    ap.add_argument("--size-target", type=str, default="mm", choices=["mm", "log_mm"], help="Target representation used during training.",)
+
 
     # Preprocess / resample (must match training)
     ap.add_argument("--target-spacing", type=float, nargs=3, default=[2.0, 2.0, 2.0])
@@ -150,7 +152,14 @@ def main():
 
     heat_np_pad = heat_p[0, 0].detach().cpu().numpy()  # padded (Z,Y,X)
     heat_np = unpad_zyx(heat_np_pad, pad_spec)  # (Z,Y,X)
-    size_np = size_p[0].detach().cpu().numpy()     # (3,)
+    size_raw = size_p[0].detach().cpu().numpy()
+
+    if args.size_target == "mm":
+        size_np = size_raw
+    elif args.size_target == "log_mm":
+        size_np = np.exp(size_raw).astype(np.float32)
+    else:
+        raise ValueError(f"Unknown size_target: {args.size_target}")
 
     # ---- Decode prediction on RESAMPLED grid (imgR) -> bbox in mm ----
     dec_cfg = DecodeConfig(clamp_min_size_mm=float(args.min_size_mm), margin_mm=float(args.margin_mm))
@@ -159,6 +168,40 @@ def main():
     # ---- Load GT bbox in mm ----
     with open(meta_path, "r") as f:
         gt_bbox_mm = np.array(json.load(f)["bbox_mm"], dtype=np.float32)
+
+    # --- Debug: compare pred/gt boxes in both mm and voxel space ---
+    pred_corners_mm = np.array([
+        [pred_bbox_mm[0], pred_bbox_mm[1], pred_bbox_mm[2]],
+        [pred_bbox_mm[0], pred_bbox_mm[1], pred_bbox_mm[5]],
+        [pred_bbox_mm[0], pred_bbox_mm[4], pred_bbox_mm[2]],
+        [pred_bbox_mm[0], pred_bbox_mm[4], pred_bbox_mm[5]],
+        [pred_bbox_mm[3], pred_bbox_mm[1], pred_bbox_mm[2]],
+        [pred_bbox_mm[3], pred_bbox_mm[1], pred_bbox_mm[5]],
+        [pred_bbox_mm[3], pred_bbox_mm[4], pred_bbox_mm[2]],
+        [pred_bbox_mm[3], pred_bbox_mm[4], pred_bbox_mm[5]],
+    ], dtype=np.float32)
+
+    gt_corners_mm = np.array([
+        [gt_bbox_mm[0], gt_bbox_mm[1], gt_bbox_mm[2]],
+        [gt_bbox_mm[0], gt_bbox_mm[1], gt_bbox_mm[5]],
+        [gt_bbox_mm[0], gt_bbox_mm[4], gt_bbox_mm[2]],
+        [gt_bbox_mm[0], gt_bbox_mm[4], gt_bbox_mm[5]],
+        [gt_bbox_mm[3], gt_bbox_mm[1], gt_bbox_mm[2]],
+        [gt_bbox_mm[3], gt_bbox_mm[1], gt_bbox_mm[5]],
+        [gt_bbox_mm[3], gt_bbox_mm[4], gt_bbox_mm[2]],
+        [gt_bbox_mm[3], gt_bbox_mm[4], gt_bbox_mm[5]],
+    ], dtype=np.float32)
+
+    pred_voxR = world_to_vox(pred_corners_mm, imgR)
+    gt_voxR = world_to_vox(gt_corners_mm, imgR)
+
+    print("pred_bbox_mm:", pred_bbox_mm.tolist())
+    print("gt_bbox_mm:", gt_bbox_mm.tolist())
+
+    print("pred_bbox_voxR min:", pred_voxR.min(axis=0).tolist(), "max:", pred_voxR.max(axis=0).tolist())
+    print("gt_bbox_voxR   min:", gt_voxR.min(axis=0).tolist(), "max:", gt_voxR.max(axis=0).tolist())
+
+    print("imgR size xyz:", imgR.GetSize())
 
     # ---- Convert both boxes to ORIGINAL voxel space for drawing ----
     pred_corners_mm = corners_from_bbox_mm(pred_bbox_mm)
@@ -193,6 +236,8 @@ def main():
     pred_peak_xyz = np.array([pred_peak_zyx[2], pred_peak_zyx[1], pred_peak_zyx[0]], dtype=np.float32)
 
     print(f"Case: {case_id}")
+    print("Raw pred size output:", size_raw.tolist())
+    print("Decoded pred size mm:", size_np.tolist())
     print("Pred center mm:", pred_center_mm.tolist())
     print("Raw pred size mm:", raw_size_mm.tolist())
     print("Clamped pred size mm:", clamped_size_mm.tolist())
