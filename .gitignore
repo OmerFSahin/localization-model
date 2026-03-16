@@ -30,3 +30,4 @@ meta.json
 **/history.json
 
 *.swp
+outputs/figs/case027_val_idx0.png
