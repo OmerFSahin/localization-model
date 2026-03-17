@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from unittest import result
 
 import torch
 
@@ -184,7 +185,8 @@ def main():
     print("Last checkpoint:", result["last_path"])
     print("History:", result["history_path"])
     print("Best epoch:", result["best_epoch"], "| Best metric:", result["best_metric_value"])
-
+    print("Best IoU checkpoint:", result["best_iou_path"])
+    print("Best IoU epoch:", result["best_iou_epoch"], "| Best IoU:", result["best_iou_value"])
 
 if __name__ == "__main__":
     raise SystemExit(main())

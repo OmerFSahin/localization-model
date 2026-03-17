@@ -168,9 +168,13 @@ def train(
     best_value: Optional[float] = None
     best_epoch: Optional[int] = None
 
+    best_iou_value: Optional[float] = None
+    best_iou_epoch: Optional[int] = None
+
     best_path = outdir / "best.pt"
     last_path = outdir / "last.pt"
     hist_path = outdir / "history.json"
+    best_iou_path = outdir / "best_iou.pt"
 
     for epoch in range(1, int(cfg.epochs) + 1):
         net.train()
@@ -212,6 +216,14 @@ def train(
 
         # Validation metrics
         val_metrics = validate_epoch(net, val_dl, device=device, cfg=cfg.val_cfg)
+
+        current_iou = float(val_metrics.get("mean_iou", float("nan")))
+
+        if not np.isnan(current_iou):
+            if best_iou_value is None or current_iou > best_iou_value:
+                best_iou_value = current_iou
+                best_iou_epoch = epoch
+                torch.save(net.state_dict(), best_iou_path)
 
         # Determine if best
         key = cfg.best_metric
@@ -270,5 +282,8 @@ def train(
         "best_metric_value": best_value,
         "best_epoch": best_epoch,
         "outdir": str(outdir),
+        "best_iou_path": str(best_iou_path),
+        "best_iou_value": best_iou_value,
+        "best_iou_epoch": best_iou_epoch,
     }
     return result
