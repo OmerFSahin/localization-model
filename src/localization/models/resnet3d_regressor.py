@@ -130,8 +130,15 @@ class ResNet3DRegressor(nn.Module):
 
         # Size head
         self.gap = nn.AdaptiveAvgPool3d(1)   # -> (B, C, 1, 1, 1)
-        self.drop = nn.Dropout(dropout) if dropout and dropout > 0 else nn.Identity()
-        self.size_head = nn.Linear(base * 8, 3)
+
+        self.size_head = nn.Sequential(
+            nn.Linear(base * 8, base * 8),
+            nn.LeakyReLU(0.1, inplace=True),
+            nn.Dropout(dropout) if dropout and dropout > 0 else nn.Identity(),
+            nn.Linear(base * 8, base * 4),
+            nn.LeakyReLU(0.1, inplace=True),
+            nn.Linear(base * 4, 3),
+        )
 
     def forward(self, x: torch.Tensor):
         input_shape = x.shape[2:]  # (Z, Y, X)
@@ -154,7 +161,6 @@ class ResNet3DRegressor(nn.Module):
 
         # Size head from global pooled bottleneck
         pooled = self.gap(feat).flatten(1)   # (B, base*8)
-        pooled = self.drop(pooled)
         size = self.size_head(pooled)        # (B, 3)
 
         if self.positive_size:
