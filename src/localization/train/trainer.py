@@ -56,6 +56,8 @@ class TrainConfig:
     scheduler_name: Optional[str] = None   # None or "step"
     scheduler_step_size: int = 15
     scheduler_gamma: float = 0.5
+    scheduler_t_max: int = 50
+    scheduler_eta_min: float = 1e-6
 
 def _now_str() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S")
@@ -163,6 +165,12 @@ def train(
             optimizer,
             step_size=int(cfg.scheduler_step_size),
             gamma=float(cfg.scheduler_gamma),
+        )
+    elif cfg.scheduler_name == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=int(cfg.scheduler_t_max),
+            eta_min=float(cfg.scheduler_eta_min),
         )
 
     history = {
