@@ -63,6 +63,7 @@ def parse_args():
     ap.add_argument("--base", type=int, default=16)
     ap.add_argument("--dropout", type=float, default=0.0)
     ap.add_argument("--positive-size", action="store_true")
+    
 
     # Dataset / targets (must match training!)
     ap.add_argument("--target-spacing", type=float, nargs=3, default=[2.0, 2.0, 2.0])
@@ -70,7 +71,13 @@ def parse_args():
     ap.add_argument("--ct-clip", type=float, nargs=2, default=[-150.0, 350.0])
     ap.add_argument("--pad-multiple", type=int, default=8)
     ap.add_argument("--heatmap-method", type=str, default="separable", choices=["separable", "meshgrid"])
-
+    ap.add_argument(
+        "--size-target",
+        type=str,
+        default="mm",
+        choices=["mm", "log_mm"],
+        help="Target representation for bbox size regression.",
+    )
     # Loader
     ap.add_argument("--batch-size", type=int, default=1)
     ap.add_argument("--num-workers", type=int, default=0)
@@ -91,13 +98,6 @@ def main():
 
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-    ap.add_argument(
-        "--size-target",
-        type=str,
-        default="mm",
-        choices=["mm", "log_mm"],
-        help="Target representation for bbox size regression.",
-)
 
     # --- Dataset config ---
     sample_cfg = SampleConfig(
