@@ -52,6 +52,10 @@ class TrainConfig:
     # Logging / saving
     log_every: int = 1
 
+    # Scheduler
+    scheduler_name: Optional[str] = None   # None or "step"
+    scheduler_step_size: int = 15
+    scheduler_gamma: float = 0.5
 
 def _now_str() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S")
@@ -152,6 +156,14 @@ def train(
 
     if optimizer is None:
         optimizer = torch.optim.AdamW(net.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
+
+    scheduler = None
+    if cfg.scheduler_name == "step":
+        scheduler = torch.optim.lr_scheduler.StepLR(
+            optimizer,
+            step_size=int(cfg.scheduler_step_size),
+            gamma=float(cfg.scheduler_gamma),
+        )
 
     history = {
         "started_at": _now_str(),
@@ -270,6 +282,9 @@ def train(
 
         # Write history each epoch (safe if training crashes)
         _save_json(hist_path, history)
+
+        if scheduler is not None:
+            scheduler.step()
 
     history["finished_at"] = _now_str()
     _save_json(hist_path, history)

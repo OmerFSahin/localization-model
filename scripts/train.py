@@ -34,7 +34,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from unittest import result
 
 import torch
 
@@ -89,6 +88,11 @@ def parse_args():
     ap.add_argument("--weight-decay", type=float, default=1e-4)
     ap.add_argument("--size-loss-w", type=float, default=0.1, help="Weight for size regression loss.")
     ap.add_argument("--log-every", type=int, default=1)
+
+    # Scheduler (optional)
+    ap.add_argument("--scheduler", type=str, default=None, choices=["step"])
+    ap.add_argument("--scheduler-step-size", type=int, default=15)
+    ap.add_argument("--scheduler-gamma", type=float, default=0.5)
 
     # Validation metrics
     ap.add_argument("--p-thresh-mm", type=float, default=20.0, help="Success threshold for P@T (mm).")
@@ -174,6 +178,9 @@ def main():
         best_metric="median_center_error_mm",
         maximize_best_metric=False,
         log_every=int(args.log_every),
+        scheduler_name=args.scheduler,
+        scheduler_step_size=int(args.scheduler_step_size),
+        scheduler_gamma=float(args.scheduler_gamma),
     )
 
     # ---- run ----
