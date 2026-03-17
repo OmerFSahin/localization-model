@@ -87,12 +87,21 @@ def parse_args():
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=1e-4)
     ap.add_argument("--size-loss-w", type=float, default=0.1, help="Weight for size regression loss.")
+    ap.add_argument(
+        "--size-loss",
+        type=str,
+        default="mse",
+        choices=["mse", "l1", "smooth_l1"],
+        help="Loss type for bbox size regression.",
+    )
     ap.add_argument("--log-every", type=int, default=1)
 
     # Scheduler (optional)
-    ap.add_argument("--scheduler", type=str, default=None, choices=["step"])
+    ap.add_argument("--scheduler", type=str, default=None, choices=["step", "cosine"])
     ap.add_argument("--scheduler-step-size", type=int, default=15)
     ap.add_argument("--scheduler-gamma", type=float, default=0.5)
+    ap.add_argument("--scheduler-t-max", type=int, default=50)
+    ap.add_argument("--scheduler-eta-min", type=float, default=1e-6)
 
     # Validation metrics
     ap.add_argument("--p-thresh-mm", type=float, default=20.0, help="Success threshold for P@T (mm).")
@@ -166,7 +175,11 @@ def main():
         positive_size=bool(args.positive_size),
     )
     # ---- training config ----
-    loss_cfg = LossConfig(heat_loss="mse", size_weight=float(args.size_loss_w))
+    loss_cfg = LossConfig(
+        heat_loss="mse",
+        size_weight=float(args.size_loss_w),
+        size_loss=str(args.size_loss),
+    )
     val_cfg = ValConfig(clamp_min_size_mm=float(args.min_size_mm), success_thresh_mm=float(args.p_thresh_mm),     size_target=str(args.size_target),)
 
     train_cfg = TrainConfig(
@@ -181,6 +194,8 @@ def main():
         scheduler_name=args.scheduler,
         scheduler_step_size=int(args.scheduler_step_size),
         scheduler_gamma=float(args.scheduler_gamma),
+        scheduler_t_max=int(args.scheduler_t_max),
+        scheduler_eta_min=float(args.scheduler_eta_min),
     )
 
     # ---- run ----

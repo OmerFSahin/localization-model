@@ -34,7 +34,7 @@ class LossConfig:
     size_weight: float = 0.1
     # If you use BCE, you may want to weight positives; keep optional for later.
     bce_pos_weight: float = 1.0
-
+    size_loss: str = "mse"   # "mse", "l1", "smooth_l1"
 
 def heatmap_loss(
     heat_pred: torch.Tensor,
@@ -66,18 +66,30 @@ def heatmap_loss(
     raise ValueError(f"Unknown heat loss type: {loss_type}")
 
 
-def size_loss(size_pred: torch.Tensor, size_tgt: torch.Tensor) -> torch.Tensor:
+def size_loss(
+    size_pred: torch.Tensor,
+    size_tgt: torch.Tensor,
+    loss_type: str = "mse",
+    ) -> torch.Tensor:
     """
     Compute size regression loss.
 
     Args:
         size_pred: (B,3)
         size_tgt:  (B,3)
+        loss_type: "mse", "l1", or "smooth_l1"
 
     Returns:
         scalar loss tensor
     """
-    return F.smooth_l1_loss(size_pred, size_tgt)
+    if loss_type == "mse":
+        return F.mse_loss(size_pred, size_tgt)
+    if loss_type == "l1":
+        return F.l1_loss(size_pred, size_tgt)
+    if loss_type == "smooth_l1":
+        return F.smooth_l1_loss(size_pred, size_tgt)
+
+    raise ValueError(f"Unknown size loss type: {loss_type}")
 
 
 def localizer_loss(
@@ -103,7 +115,11 @@ def localizer_loss(
         loss_type=cfg.heat_loss,
         bce_pos_weight=cfg.bce_pos_weight,
     )
-    l_size = size_loss(size_pred, size_tgt)
+    l_size = size_loss(
+        size_pred=size_pred,
+        size_tgt=size_tgt,
+        loss_type=cfg.size_loss,
+    )
 
     total = l_heat + float(cfg.size_weight) * l_size
 

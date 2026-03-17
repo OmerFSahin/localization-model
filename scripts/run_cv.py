@@ -70,6 +70,7 @@ def parse_args():
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=1e-4)
     ap.add_argument("--size-loss-w", type=float, default=0.1)
+    ap.add_argument("--size-loss", type=str, default="mse", choices=["mse", "l1", "smooth_l1"])
     ap.add_argument("--log-every", type=int, default=1)
 
     # scheduler
@@ -118,6 +119,7 @@ def main() -> int:
             "--lr", str(args.lr),
             "--weight-decay", str(args.weight_decay),
             "--size-loss-w", str(args.size_loss_w),
+            "--size-loss", str(args.size_loss),
             "--log-every", str(args.log_every),
             "--p-thresh-mm", str(args.p_thresh_mm),
             "--min-size-mm", str(args.min_size_mm),
