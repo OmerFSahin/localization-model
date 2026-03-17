@@ -97,6 +97,9 @@ def parse_args():
     # Device
     ap.add_argument("--device", type=str, default=None, help="cuda or cpu (default: auto).")
 
+    ap.add_argument("--cv-fold", type=int, default=None, help="Validation fold index for CV mode.")
+    ap.add_argument("--fold-col", type=str, default="fold", help="Fold column name in CSV.")
+
     return ap.parse_args()
 
 
@@ -137,6 +140,8 @@ def main():
         sample_cfg=sample_cfg,
         train_loader_cfg=train_loader_cfg,
         val_loader_cfg=val_loader_cfg,
+        cv_fold=args.cv_fold,
+        fold_col=str(args.fold_col),
     )
 
     print("Requested device:", args.device)
@@ -144,6 +149,8 @@ def main():
     if torch.cuda.is_available():
         print("CUDA device count:", torch.cuda.device_count())
         print("CUDA device 0:", torch.cuda.get_device_name(0))
+    if args.cv_fold is not None:
+        print(f"CV mode enabled | val fold = {args.cv_fold} | fold column = '{args.fold_col}'")
     print(f"Train samples: {len(train_ds)} | Val samples: {len(val_ds)}")
     print(f"Model: {args.model} | base={args.base} | dropout={args.dropout} | positive_size={args.positive_size}")
 

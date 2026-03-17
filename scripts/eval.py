@@ -78,6 +78,9 @@ def parse_args():
         choices=["mm", "log_mm"],
         help="Target representation for bbox size regression.",
     )
+    ap.add_argument("--cv-fold", type=int, default=None, help="Validation fold index for CV mode.")
+    ap.add_argument("--cv-mode", type=str, default=None, choices=["train", "val"], help="Dataset side for CV mode.")
+    ap.add_argument("--fold-col", type=str, default="fold", help="Fold column name in CSV.")
     # Loader
     ap.add_argument("--batch-size", type=int, default=1)
     ap.add_argument("--num-workers", type=int, default=0)
@@ -109,8 +112,18 @@ def main():
         size_target=str(args.size_target),
     )
 
-    ds = LocalizerDataset(args.index_csv, split=args.split, cfg=sample_cfg)
-
+    if args.cv_fold is None:
+        ds = LocalizerDataset(args.index_csv, split=args.split, cfg=sample_cfg)
+    else:
+        if args.cv_mode is None:
+            raise ValueError("--cv-mode must be provided when --cv-fold is used")
+        ds = LocalizerDataset(
+            args.index_csv,
+            cfg=sample_cfg,
+            cv_fold=int(args.cv_fold),
+            cv_mode=str(args.cv_mode),
+            fold_col=str(args.fold_col),
+        )
     loader_cfg = LoaderConfig(
         batch_size=int(args.batch_size),
         num_workers=int(args.num_workers),
@@ -175,6 +188,10 @@ def main():
 
     print("\n✅ Evaluation results")
     print(f"n: {n}")
+    if args.cv_fold is None:
+        print(f"Evaluating split='{args.split}' with {len(ds)} samples on device='{device}'")
+    else:
+        print(f"Evaluating CV {args.cv_mode} fold={args.cv_fold} with {len(ds)} samples on device='{device}'")
     print(f"median center error (mm): {med:.2f}")
     print(f"mean   center error (mm): {mean:.2f}")
     print(f"P@{val_cfg.success_thresh_mm:.0f}mm (%): {pT:.1f}")

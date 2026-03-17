@@ -77,23 +77,52 @@ class LocalizerDataset(Dataset):
     def __init__(
         self,
         index_csv: PathLike,
-        split: str,
+        split: Optional[str] = None,
         cfg: Optional[SampleConfig] = None,
+        cv_fold: Optional[int] = None,
+        cv_mode: Optional[str] = None,   # "train" or "val"
+        fold_col: str = "fold",
     ):
         self.index_csv = Path(index_csv)
-        self.split = str(split)
         self.cfg = cfg or SampleConfig()
 
         df = pd.read_csv(self.index_csv)
 
-        # Filter by split
-        if "split" not in df.columns:
-            raise ValueError(f"Index CSV must contain a 'split' column: {self.index_csv}")
+        # Filter by split OR CV fold
+        if cv_fold is not None:
+            if cv_mode not in {"train", "val"}:
+                raise ValueError("When cv_fold is used, cv_mode must be 'train' or 'val'")
+            if fold_col not in df.columns:
+                raise ValueError(f"Index CSV must contain fold column '{fold_col}': {self.index_csv}")
 
-        df = df[df["split"] == self.split].reset_index(drop=True)
+            self.split = cv_mode
+            self.cv_fold = int(cv_fold)
+            self.cv_mode = str(cv_mode)
+            self.fold_col = str(fold_col)
 
-        if len(df) == 0:
-            raise RuntimeError(f"No rows for split='{self.split}' in {self.index_csv}")
+            if self.cv_mode == "train":
+                df = df[df[fold_col] != self.cv_fold].reset_index(drop=True)
+            else:  # val
+                df = df[df[fold_col] == self.cv_fold].reset_index(drop=True)
+
+            if len(df) == 0:
+                raise RuntimeError(
+                    f"No rows for cv_fold={self.cv_fold}, cv_mode='{self.cv_mode}' in {self.index_csv}"
+                )
+
+        else:
+            if split is None:
+                raise ValueError("Either split must be provided, or cv_fold + cv_mode must be provided")
+
+            self.split = str(split)
+
+            if "split" not in df.columns:
+                raise ValueError(f"Index CSV must contain a 'split' column: {self.index_csv}")
+
+            df = df[df["split"] == self.split].reset_index(drop=True)
+
+            if len(df) == 0:
+                raise RuntimeError(f"No rows for split='{self.split}' in {self.index_csv}")
 
         # Basic required columns
         for col in ("image", "meta"):

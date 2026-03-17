@@ -73,6 +73,8 @@ def build_loaders(
     sample_cfg: Optional[SampleConfig] = None,
     train_loader_cfg: Optional[LoaderConfig] = None,
     val_loader_cfg: Optional[LoaderConfig] = None,
+    cv_fold: Optional[int] = None,
+    fold_col: str = "fold",
 ) -> Tuple[LocalizerDataset, LocalizerDataset, DataLoader, DataLoader]:
     """
     Build train/val datasets and dataloaders.
@@ -82,6 +84,8 @@ def build_loaders(
         sample_cfg: SampleConfig for dataset preprocessing/targets
         train_loader_cfg: DataLoader config for training loader
         val_loader_cfg: DataLoader config for validation loader
+        cv_fold: if not None, use cross-validation mode with the given validation fold
+        fold_col: fold column name in the CSV
 
     Returns:
         (train_ds, val_ds, train_dl, val_dl)
@@ -90,8 +94,24 @@ def build_loaders(
     train_loader_cfg = train_loader_cfg or LoaderConfig()
     val_loader_cfg = val_loader_cfg or LoaderConfig()
 
-    train_ds = LocalizerDataset(index_csv=index_csv, split="train", cfg=sample_cfg)
-    val_ds = LocalizerDataset(index_csv=index_csv, split="val", cfg=sample_cfg)
+    if cv_fold is None:
+        train_ds = LocalizerDataset(index_csv=index_csv, split="train", cfg=sample_cfg)
+        val_ds = LocalizerDataset(index_csv=index_csv, split="val", cfg=sample_cfg)
+    else:
+        train_ds = LocalizerDataset(
+            index_csv=index_csv,
+            cfg=sample_cfg,
+            cv_fold=int(cv_fold),
+            cv_mode="train",
+            fold_col=fold_col,
+        )
+        val_ds = LocalizerDataset(
+            index_csv=index_csv,
+            cfg=sample_cfg,
+            cv_fold=int(cv_fold),
+            cv_mode="val",
+            fold_col=fold_col,
+        )
 
     train_dl = DataLoader(train_ds, **_to_loader_kwargs(train_loader_cfg, shuffle=True))
     val_dl = DataLoader(val_ds, **_to_loader_kwargs(val_loader_cfg, shuffle=False))
