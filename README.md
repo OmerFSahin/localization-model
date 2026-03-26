@@ -502,22 +502,4 @@ Such a model could improve generalization across imaging modalities and enable m
 
 ## Acknowledgements
 
-This project builds on ideas from prior work in medical image analysis and deep learning for volumetric data.
 
-The implementation is inspired by research on 3D convolutional neural networks and U-Net style architectures for medical imaging tasks.
-
-We also acknowledge the developers of the following open-source tools used in this project:
-
-PyTorch 
-A deep learning framework used for implementing and training the neural network.
-
-SimpleITK 
-A library for medical image processing and handling volumetric medical imaging formats.
-
-NumPy 
-A numerical computing library used for array operations and mathematical computations.
-
-Matplotlib 
-Used for visualization of model predictions and bounding boxes on medical images.
-
-These tools and the broader open-source community make it possible to develop and share reproducible medical imaging research.
