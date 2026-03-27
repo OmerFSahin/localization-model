@@ -31,3 +31,4 @@ meta.json
 
 *.swp
 outputs/
+data/processed/localizer_index_cv5.csv
