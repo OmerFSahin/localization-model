@@ -78,6 +78,10 @@ def parse_args():
     ap.add_argument("--scheduler-step-size", type=int, default=15)
     ap.add_argument("--scheduler-gamma", type=float, default=0.5)
 
+    # AMP
+    ap.add_argument("--amp", action="store_true", help="Enable mixed precision training.")
+    ap.add_argument("--amp-dtype", type=str, default="float16", choices=["float16", "bfloat16"])
+
     # metrics / device
     ap.add_argument("--p-thresh-mm", type=float, default=20.0)
     ap.add_argument("--min-size-mm", type=float, default=10.0)
@@ -137,6 +141,9 @@ def main() -> int:
                 "--scheduler-step-size", str(args.scheduler_step_size),
                 "--scheduler-gamma", str(args.scheduler_gamma),
             ]
+        if args.amp:
+            train_cmd.append("--amp")
+            train_cmd += ["--amp-dtype", str(args.amp_dtype)]
 
         run_cmd(train_cmd)
 

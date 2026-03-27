@@ -59,6 +59,9 @@ class TrainConfig:
     scheduler_t_max: int = 50
     scheduler_eta_min: float = 1e-6
 
+    use_amp: bool = False
+    amp_dtype: str = "float16"   # "float16" or "bfloat16"
+
 def _now_str() -> str:
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -81,11 +84,14 @@ def validate_losses(
     val_dl,
     loss_cfg: LossConfig,
     device: str = "cpu",
+    use_amp: bool = False,
+    amp_dtype: torch.dtype = torch.float16,
 ) -> Dict[str, float]:
     """
     Compute validation losses over the validation DataLoader.
     """
     net.eval()
+    amp_enabled = bool(use_amp) and str(device).startswith("cuda")
 
     batch_total = []
     batch_heat = []
@@ -93,11 +99,14 @@ def validate_losses(
 
     with torch.no_grad():
         for x, y in val_dl:
-            x = x.to(device)
-            heat_t = y["heat"].to(device)
-            size_t = y["size"].to(device)
+            x = x.to(device, non_blocking=True)
+            heat_t = y["heat"].to(device, non_blocking=True)
+            size_t = y["size"].to(device, non_blocking=True)
 
+
+        with torch.cuda.amp.autocast(enabled=amp_enabled, dtype=amp_dtype):
             heat_p, size_p = net(x)
+
 
             losses = localizer_loss(
                 heat_pred=heat_p,
@@ -156,6 +165,15 @@ def train(
 
     net.to(device)
 
+    amp_enabled = bool(cfg.use_amp) and str(device).startswith("cuda")
+
+    if cfg.amp_dtype == "float16":
+        amp_dtype = torch.float16
+    elif cfg.amp_dtype == "bfloat16":
+        amp_dtype = torch.bfloat16
+    else:
+        raise ValueError(f"Unknown amp_dtype: {cfg.amp_dtype}")
+
     if optimizer is None:
         optimizer = torch.optim.AdamW(net.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
 
@@ -172,6 +190,12 @@ def train(
             T_max=int(cfg.scheduler_t_max),
             eta_min=float(cfg.scheduler_eta_min),
         )
+
+    
+
+
+
+    scaler = torch.cuda.amp.GradScaler(enabled=amp_enabled and amp_dtype == torch.float16)
 
     history = {
         "started_at": _now_str(),
@@ -203,24 +227,29 @@ def train(
         batch_size = []
 
         for x, y in train_dl:
-            x = x.to(device)
-            heat_t = y["heat"].to(device)
-            size_t = y["size"].to(device)
+            x = x.to(device, non_blocking=True)
+            heat_t = y["heat"].to(device, non_blocking=True)
+            size_t = y["size"].to(device, non_blocking=True)
 
             optimizer.zero_grad(set_to_none=True)
 
-            heat_p, size_p = net(x)
+            with torch.cuda.amp.autocast(enabled=amp_enabled, dtype=amp_dtype):
+                heat_p, size_p = net(x)
+                losses = localizer_loss(
+                    heat_pred=heat_p,
+                    heat_tgt=y["heat"].to(device),
+                    size_pred=size_p,
+                    size_tgt=y["size"].to(device),
+                    cfg=cfg.loss_cfg,
+                )
 
-            losses = localizer_loss(
-                heat_pred=heat_p,
-                heat_tgt=heat_t,
-                size_pred=size_p,
-                size_tgt=size_t,
-                cfg=cfg.loss_cfg,
-            )
-
-            losses["total"].backward()
-            optimizer.step()
+            if amp_enabled and amp_dtype == torch.float16:
+                scaler.scale(losses["total"]).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                losses["total"].backward()
+                optimizer.step()
 
 
             batch_losses.append(float(losses["total"].detach().cpu()))
@@ -232,7 +261,7 @@ def train(
         train_size = float(np.mean(batch_size)) if batch_size else float("nan")
 
         # Validation losses
-        val_losses = validate_losses(net, val_dl, loss_cfg=cfg.loss_cfg, device=device)
+        val_losses = validate_losses(net, val_dl, loss_cfg=cfg.loss_cfg, device=device, use_amp=cfg.use_amp, amp_dtype=amp_dtype)
 
         # Validation metrics
         val_metrics = validate_epoch(net, val_dl, device=device, cfg=cfg.val_cfg)

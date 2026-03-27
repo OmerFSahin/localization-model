@@ -103,6 +103,10 @@ def parse_args():
     ap.add_argument("--scheduler-t-max", type=int, default=50)
     ap.add_argument("--scheduler-eta-min", type=float, default=1e-6)
 
+    # AMP
+    ap.add_argument("--amp", action="store_true", help="Enable mixed precision training.")
+    ap.add_argument("--amp-dtype", type=str, default="float16", choices=["float16", "bfloat16"])
+
     # Validation metrics
     ap.add_argument("--p-thresh-mm", type=float, default=20.0, help="Success threshold for P@T (mm).")
     ap.add_argument("--min-size-mm", type=float, default=10.0, help="Clamp predicted size (mm) for IoU metric.")
@@ -160,12 +164,14 @@ def main():
     print("Requested device:", args.device)
     print("torch.cuda.is_available():", torch.cuda.is_available())
     if torch.cuda.is_available():
+        torch.backends.cudnn.benchmark = True
         print("CUDA device count:", torch.cuda.device_count())
         print("CUDA device 0:", torch.cuda.get_device_name(0))
     if args.cv_fold is not None:
         print(f"CV mode enabled | val fold = {args.cv_fold} | fold column = '{args.fold_col}'")
     print(f"Train samples: {len(train_ds)} | Val samples: {len(val_ds)}")
     print(f"Model: {args.model} | base={args.base} | dropout={args.dropout} | positive_size={args.positive_size}")
+    print(f"AMP: {args.amp} | amp_dtype={args.amp_dtype}")
 
     # ---- model ----
     net = build_model(
@@ -196,6 +202,8 @@ def main():
         scheduler_gamma=float(args.scheduler_gamma),
         scheduler_t_max=int(args.scheduler_t_max),
         scheduler_eta_min=float(args.scheduler_eta_min),
+        use_amp=bool(args.amp),
+        amp_dtype=str(args.amp_dtype),
     )
 
     # ---- run ----
