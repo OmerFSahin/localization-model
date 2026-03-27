@@ -117,6 +117,10 @@ def parse_args():
     ap.add_argument("--cv-fold", type=int, default=None, help="Validation fold index for CV mode.")
     ap.add_argument("--fold-col", type=str, default="fold", help="Fold column name in CSV.")
 
+    # Cache options
+    ap.add_argument("--use-cache", action="store_true", help="Use cached preprocessed samples.")
+    ap.add_argument("--cache-index-csv", type=Path, default=None, help="Path to cache_index.csv when using cache.")
+
     return ap.parse_args()
 
 
@@ -159,6 +163,8 @@ def main():
         val_loader_cfg=val_loader_cfg,
         cv_fold=args.cv_fold,
         fold_col=str(args.fold_col),
+        use_cache=bool(args.use_cache),
+        cache_index_csv=args.cache_index_csv,
     )
 
     print("Requested device:", args.device)
@@ -172,6 +178,7 @@ def main():
     print(f"Train samples: {len(train_ds)} | Val samples: {len(val_ds)}")
     print(f"Model: {args.model} | base={args.base} | dropout={args.dropout} | positive_size={args.positive_size}")
     print(f"AMP: {args.amp} | amp_dtype={args.amp_dtype}")
+    print(f"Use cache: {args.use_cache} | cache_index_csv={args.cache_index_csv}")
 
     # ---- model ----
     net = build_model(

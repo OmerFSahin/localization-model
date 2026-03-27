@@ -87,11 +87,17 @@ def parse_args():
     ap.add_argument("--min-size-mm", type=float, default=10.0)
     ap.add_argument("--device", type=str, default=None)
 
+    # cache options
+    ap.add_argument("--use-cache", action="store_true", help="Use cached preprocessed samples.")
+    ap.add_argument("--cache-index-csv", type=Path, default=None, help="Path to cache_index.csv when using cache.")
+
     return ap.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.use_cache and args.cache_index_csv is None:
+        raise ValueError("--cache-index-csv must be provided when --use-cache is set")
 
     out_root = Path(args.out_root)
     out_root.mkdir(parents=True, exist_ok=True)
@@ -144,6 +150,10 @@ def main() -> int:
         if args.amp:
             train_cmd.append("--amp")
             train_cmd += ["--amp-dtype", str(args.amp_dtype)]
+
+        if args.use_cache:
+            train_cmd.append("--use-cache")
+            train_cmd += ["--cache-index-csv", str(args.cache_index_csv)]
 
         run_cmd(train_cmd)
 
