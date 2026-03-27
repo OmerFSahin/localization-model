@@ -32,3 +32,4 @@ meta.json
 *.swp
 outputs/
 data/processed/localizer_index_cv5.csv
+data/cache/localizer_sp2_clip_m150_350_sigma3_logmm/cache_index.csv
