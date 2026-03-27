@@ -24,6 +24,9 @@ from torch.utils.data import DataLoader
 
 from localization.data.dataset import LocalizerDataset, SampleConfig
 
+from localization.data.cached_dataset import CachedLocalizerDataset
+
+from typing import Union
 
 PathLike = Union[str, Path]
 
@@ -75,6 +78,8 @@ def build_loaders(
     val_loader_cfg: Optional[LoaderConfig] = None,
     cv_fold: Optional[int] = None,
     fold_col: str = "fold",
+    use_cache: bool = False,
+    cache_index_csv: Optional[PathLike] = None,
 ) -> Tuple[LocalizerDataset, LocalizerDataset, DataLoader, DataLoader]:
     """
     Build train/val datasets and dataloaders.
@@ -94,24 +99,45 @@ def build_loaders(
     train_loader_cfg = train_loader_cfg or LoaderConfig()
     val_loader_cfg = val_loader_cfg or LoaderConfig()
 
-    if cv_fold is None:
-        train_ds = LocalizerDataset(index_csv=index_csv, split="train", cfg=sample_cfg)
-        val_ds = LocalizerDataset(index_csv=index_csv, split="val", cfg=sample_cfg)
+    if use_cache:
+        if cache_index_csv is None:
+            raise ValueError("cache_index_csv must be provided when use_cache=True")
+
+        if cv_fold is None:
+            train_ds = CachedLocalizerDataset(cache_index_csv=cache_index_csv, split="train")
+            val_ds = CachedLocalizerDataset(cache_index_csv=cache_index_csv, split="val")
+        else:
+            train_ds = CachedLocalizerDataset(
+                cache_index_csv=cache_index_csv,
+                cv_fold=int(cv_fold),
+                cv_mode="train",
+                fold_col=fold_col,
+            )
+            val_ds = CachedLocalizerDataset(
+                cache_index_csv=cache_index_csv,
+                cv_fold=int(cv_fold),
+                cv_mode="val",
+                fold_col=fold_col,
+            )
     else:
-        train_ds = LocalizerDataset(
-            index_csv=index_csv,
-            cfg=sample_cfg,
-            cv_fold=int(cv_fold),
-            cv_mode="train",
-            fold_col=fold_col,
-        )
-        val_ds = LocalizerDataset(
-            index_csv=index_csv,
-            cfg=sample_cfg,
-            cv_fold=int(cv_fold),
-            cv_mode="val",
-            fold_col=fold_col,
-        )
+        if cv_fold is None:
+            train_ds = LocalizerDataset(index_csv=index_csv, split="train", cfg=sample_cfg)
+            val_ds = LocalizerDataset(index_csv=index_csv, split="val", cfg=sample_cfg)
+        else:
+            train_ds = LocalizerDataset(
+                index_csv=index_csv,
+                cfg=sample_cfg,
+                cv_fold=int(cv_fold),
+                cv_mode="train",
+                fold_col=fold_col,
+            )
+            val_ds = LocalizerDataset(
+                index_csv=index_csv,
+                cfg=sample_cfg,
+                cv_fold=int(cv_fold),
+                cv_mode="val",
+                fold_col=fold_col,
+            )
 
     train_dl = DataLoader(train_ds, **_to_loader_kwargs(train_loader_cfg, shuffle=True))
     val_dl = DataLoader(val_ds, **_to_loader_kwargs(val_loader_cfg, shuffle=False))
@@ -123,7 +149,9 @@ def build_test_loader(
     index_csv: PathLike,
     sample_cfg: Optional[SampleConfig] = None,
     test_loader_cfg: Optional[LoaderConfig] = None,
-) -> Tuple[LocalizerDataset, DataLoader]:
+    use_cache: bool = False,
+    cache_index_csv: Optional[PathLike] = None,
+) -> Tuple[Union[LocalizerDataset, CachedLocalizerDataset], DataLoader]:
     """
     Build test dataset and loader.
 
@@ -133,6 +161,12 @@ def build_test_loader(
     sample_cfg = sample_cfg or SampleConfig()
     test_loader_cfg = test_loader_cfg or LoaderConfig()
 
-    test_ds = LocalizerDataset(index_csv=index_csv, split="test", cfg=sample_cfg)
+    if use_cache:
+        if cache_index_csv is None:
+            raise ValueError("cache_index_csv must be provided when use_cache=True")
+        test_ds = CachedLocalizerDataset(cache_index_csv=cache_index_csv, split="test")
+    else:
+        test_ds = LocalizerDataset(index_csv=index_csv, split="test", cfg=sample_cfg)
+
     test_dl = DataLoader(test_ds, **_to_loader_kwargs(test_loader_cfg, shuffle=False))
     return test_ds, test_dl
