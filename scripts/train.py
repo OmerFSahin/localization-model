@@ -52,13 +52,7 @@ def parse_args():
     ap.add_argument("--outdir", type=Path, default=Path("outputs/run01"))
 
     # Model
-    ap.add_argument(
-    "--model",
-    type=str,
-    default="unet3d",
-    choices=["unet3d", "cnn3d_regressor", "resnet3d_regressor"],
-    help="Model architecture to train.",
-)
+    ap.add_argument("--model", type=str, default="resnet3d_regressor", choices=["unet3d", "cnn3d_regressor", "resnet3d_regressor"], help="Model architecture to train.",)
     ap.add_argument("--base", type=int, default=16, help="Base channel count for the model.")
     ap.add_argument("--dropout", type=float, default=0.0)
     ap.add_argument("--positive-size", action="store_true", help="Use softplus to enforce size > 0.")
@@ -69,13 +63,7 @@ def parse_args():
     ap.add_argument("--ct-clip", type=float, nargs=2, default=[-150.0, 350.0], help="CT clip window (min max).")
     ap.add_argument("--pad-multiple", type=int, default=8, help="Pad (Z,Y,X) to a multiple of this value.")
     ap.add_argument("--heatmap-method", type=str, default="separable", choices=["separable", "meshgrid"])
-    ap.add_argument(
-    "--size-target",
-    type=str,
-    default="mm",
-    choices=["mm", "log_mm"],
-    help="Target representation for bbox size regression.",
-)
+    ap.add_argument("--size-target", type=str, default="log_mm", choices=["mm", "log_mm"], help="Target representation for bbox size regression.",)
 
     # Loader
     ap.add_argument("--batch-size", type=int, default=1)
@@ -86,25 +74,19 @@ def parse_args():
     ap.add_argument("--epochs", type=int, default=50)
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--weight-decay", type=float, default=1e-4)
-    ap.add_argument("--size-loss-w", type=float, default=0.1, help="Weight for size regression loss.")
-    ap.add_argument(
-        "--size-loss",
-        type=str,
-        default="mse",
-        choices=["mse", "l1", "smooth_l1"],
-        help="Loss type for bbox size regression.",
-    )
+    ap.add_argument("--size-loss-w", type=float, default=1.0, help="Weight for size regression loss.")
+    ap.add_argument("--size-loss", type=str, default="mse", choices=["mse", "l1", "smooth_l1"], help="Loss type for bbox size regression.",)
     ap.add_argument("--log-every", type=int, default=1)
 
     # Scheduler (optional)
-    ap.add_argument("--scheduler", type=str, default=None, choices=["step", "cosine"])
+    ap.add_argument("--scheduler", type=str, default="step", choices=["step", "cosine"])
     ap.add_argument("--scheduler-step-size", type=int, default=15)
     ap.add_argument("--scheduler-gamma", type=float, default=0.5)
     ap.add_argument("--scheduler-t-max", type=int, default=50)
     ap.add_argument("--scheduler-eta-min", type=float, default=1e-6)
 
     # AMP
-    ap.add_argument("--amp", action="store_true", help="Enable mixed precision training.")
+    ap.add_argument("--no-amp", action="store_true", help="Disable mixed precision training.")
     ap.add_argument("--amp-dtype", type=str, default="float16", choices=["float16", "bfloat16"])
 
     # Validation metrics
@@ -209,7 +191,7 @@ def main():
         scheduler_gamma=float(args.scheduler_gamma),
         scheduler_t_max=int(args.scheduler_t_max),
         scheduler_eta_min=float(args.scheduler_eta_min),
-        use_amp=bool(args.amp),
+        use_amp=not args.no_amp,
         amp_dtype=str(args.amp_dtype),
     )
 
