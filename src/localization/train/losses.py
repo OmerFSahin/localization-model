@@ -32,7 +32,6 @@ class LossConfig:
     """
     heat_loss: HeatLossType = "mse"
     size_weight: float = 0.1
-    # If you use BCE, you may want to weight positives; keep optional for later.
     bce_pos_weight: float = 1.0
     size_loss: str = "mse"   # "mse", "l1", "smooth_l1"
 
@@ -58,8 +57,7 @@ def heatmap_loss(
         return F.mse_loss(heat_pred, heat_tgt)
 
     if loss_type == "bce":
-        # BCEWithLogitsLoss expects logits. If your model outputs raw regression values,
-        # either switch model head training to logits or apply a suitable transform.
+
         pos_w = torch.tensor([float(bce_pos_weight)], device=heat_pred.device, dtype=heat_pred.dtype)
         return F.binary_cross_entropy_with_logits(heat_pred, heat_tgt, pos_weight=pos_w)
 
