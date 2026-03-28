@@ -51,7 +51,7 @@ class SampleConfig:
 
     Keep all dataset knobs here so they can be set from configs later.
     """
-    size_target: str = "mm"   # "mm" or "log_mm"
+    size_target: str = "log_mm"   # "mm" or "log_mm"
     target_spacing_xyz: Tuple[float, float, float] = (2.0, 2.0, 2.0)
     heat_sigma_vox: float = 3.0
     ct_clip: Tuple[float, float] = (-150.0, 350.0)
