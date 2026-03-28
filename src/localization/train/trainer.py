@@ -53,7 +53,7 @@ class TrainConfig:
     log_every: int = 1
 
     # Scheduler
-    scheduler_name: Optional[str] = None   # None or "step"
+    scheduler_name: Optional[str] = "step"   # None or "step"
     scheduler_step_size: int = 15
     scheduler_gamma: float = 0.5
     scheduler_t_max: int = 50
